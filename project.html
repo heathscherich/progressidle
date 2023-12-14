@@ -1,0 +1,315 @@
+<html>
+  <style>
+    ::selection {
+      background-color: transparent;
+    }
+  
+    ! Top level of DOM 
+    #simple-large {
+    }
+    
+    #magic-large {
+      display: flex;
+    }
+    
+    #magic-large div {
+      margin: 0px 16px;
+    }
+    
+    #toolbelt {
+      display: flex;
+      margin: 24px auto;
+    }
+    
+    .tb-button {
+      width: 144px;
+      height: 32px;
+      font: 24px Tahoma;
+      margin: 8px 16px;
+      
+      background-color: maroon;
+      color: white;
+      
+      border: 2px solid #cdcdcd;
+      border-radius: 14px;
+      
+      vertical-align: middle;
+      text-align: center;
+    }
+    
+    .tb-button:hover {
+      cursor: pointer;
+    }
+    
+    #footnote {
+      height: 250px;
+      width: 100%;
+      margin: 12px auto;
+    }
+    
+    ! Input items
+    
+    input .title {
+      
+      width: 500px;
+    }
+    
+    input .steps {
+      width: 168px;
+      margin: 24px 125px;
+    }
+    
+    .small-button {
+      width: 126px;
+      height: 24px;
+    }
+    
+    ! Bars used in consequence
+    .enclosure {
+      background-color: black; 
+      width: 250px; 
+      margin: 0 auto;
+    }
+    
+    .level {
+       background-color: darkgray; 
+       color: white; 
+       height: 20px; 
+    }
+    
+    .fill-bar {
+      margin-left: 4px; 
+      background-color: darkgray;
+    }
+  </style>
+  <body>
+    <div id="toolbelt"><button class="tb-button" onclick="sane_clear()">Clear</button><button class="tb-button" onclick="organize()">Org</button><button class="tb-button" onclick="titleGenerator()">Title</button></div>
+    <div id="magic-large">
+      <div style="display: inline-block;">
+        <input id="title-put" class="title" type="text" placeholder="Title"></input>
+      </div>
+      <div>
+        <div id="procid"># Process: 2</div>
+        <input id="steps-range" class="steps" type="range" min="1" max="7" onchange="procchange()"></input>
+      </div>
+      <button class="small-button" onclick="submit()">New</div>
+    </div>
+    <div id="simple-large"></div>
+    <div id="footnote"></div>
+  </body>
+  
+  <script>
+    var glob_ord = []
+    var totality = []
+    var title = 0
+    var held = false
+    
+    var progressions = {
+      basic: (progress, del) => {
+        return progress + del
+      },
+      normal: (progress, attack, skill, defense) => {
+        let u = 1 - Math.random()
+        let v = Math.random()
+        let z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)
+
+        let val = z * skill + attack
+        if (Math.abs(z) > defense) {
+          return progressions.normal(attack, skill, defense)
+        } else {
+          progressions.basic(progress, val)
+        }
+      },
+      probability: (progress, del, chance) => {
+        if (Math.random() < chance) {
+          progressions.basic(progress, del)
+        }
+      },
+      exponent: (v, n) => {
+        return v**n
+      },
+      OOM: (x) => {
+        return Math.log10(Math.exp(x))
+      },
+      cascade: () => {
+        console.log("Cascade")
+      }
+    }
+    
+    // Incoming looks like ([[title, steps]...], order) where steps is a repeat of the object
+    make_GUI = (unordered, order) => {
+      let mycopy
+      let space = []
+      
+      mycopy = Array.from(order)
+      let entry = mycopy.pop()
+      while (entry === 0 || entry) {
+        space.push(0)
+        entry = mycopy.pop()
+      }
+      
+      for (ord of order) {
+        // Look at first occurrence
+        space[ord] = unordered[order[ord]] 
+      }
+      
+      let cust_el = ''
+      
+      mycopy = Array.from(space)
+      
+      // Found an iterator method of checking array emptiness
+      if (mycopy.values().next().done) {
+        console.log("empty")
+      } else {
+        mycopy.reverse()
+        let count = 0
+        while(mycopy.values().next().done === false) {
+          let entry = mycopy.pop()       
+          cust_el += '<div id="cust-' + count + '"><h1>' + entry[0] + '</h1>' // Title
+          count++
+          
+          let counta = 0
+          
+          while (counta < parseInt(entry[1])) {
+            counta++
+            cust_el += '<div id="spot-' + count + '-' + counta + '">' // Delimited list
+            cust_el += make_level(1) + '</div>'              // Progress from actual unit of work
+          }
+          cust_el += '</div>'
+        }
+        
+        document.getElementById('simple-large').innerHTML = cust_el
+        
+        mycopy = Array.from(space)
+        mycopy.reverse()
+        count = 0
+        while (mycopy.values().next().done === false) {
+          let entry = mycopy.pop()
+          document.getElementById('cust-' + count).onmousedown = (event) => {
+            held = event.currentTarget.id.split('-')[1]
+          }
+          
+          document.getElementById('cust-' + count).onmouseup = (event) => {
+            held = false
+          }
+          
+          let elm = document.getElementById('cust-' + count)
+          elm.onmousemove = (event) => {
+            if (JSON.stringify(held) == JSON.stringify(elm.id.split('-')[1])) {
+              elm.style.position = 'absolute'
+              elm.style.left = event.clientX - elm.clientWidth / 2
+              elm.style.top = event.clientY - elm.clientHeight / 2
+            }
+          }
+          count++
+        }
+      }
+    }
+    
+    make_level = (progress) => {
+      let cust_el = '<div><div class="enclosure">' +
+                    '<div class="level" style="width: ' + 250 * progress + ';"><div class="fill-bar">Progress</div></div>' + 
+                    '</div></div>'
+      
+      return cust_el
+    }
+    
+    procchange = () => {
+      document.getElementById("procid").innerHTML = '# Process ' + document.getElementById('steps-range').value
+    }
+    
+    sane_clear = () => {
+      totality = []
+      glob_ord = []
+      
+      document.getElementById("simple-large").innerHTML = ''
+      
+      forward_cycle()
+    }
+    
+    organize = () => {
+      let el = document.getElementById("simple-large")
+            
+      let result = []
+      
+      let temp
+      let ysort = []
+      let count = 0, i = 0
+      while (el.childNodes[count]) {
+        ysort.push(el.childNodes[count].offsetTop)
+        count++
+      }
+      
+      let mapped = glob_ord.map((v, i) => {
+        return { i, sortValue: ysort[i] }
+      })
+      
+      mapped.sort((a, b) => {
+        if ( a.sortValue > b.sortValue ) {
+          return 1
+        } else if ( a.sortValue < b.sortValue) {
+          return -1
+        } else {
+          return 0
+        }
+      })
+      
+      let sorted = mapped.map((v) => glob_ord[v.i])
+
+      while (sorted[i] === 0 || sorted[i]) {
+        result.push(el.childNodes[sorted[i]])
+        i++
+      }
+      
+      document.getElementById("simple-large").childNodes = result
+      
+      let t2 = []
+      
+      let reset = false
+      i = 0
+      count = 0
+      while (sorted[i] === 0 || sorted[i]) {
+        if (sorted[i] == count) {
+          t2.push(totality[sorted[i]])
+          i = 0
+          reset = true
+          count++
+        }
+        if (reset) {
+          reset = false
+        } else {
+          i++
+        }
+      }
+      
+      glob_ord = Object.values(sorted)
+      totality = t2
+      forward_cycle()
+    }
+    
+    titleGenerator = () => {
+      document.getElementById("title-put").value = "Group " + title
+      title++
+    }
+    
+    submit = () => {
+      let title = document.getElementById("title-put").value
+      let steps = document.getElementById("steps-range").value
+      
+      totality.push([title, steps])
+      glob_ord.push(glob_ord.length)
+      
+      forward_cycle()
+    }
+    
+    forward_cycle = () => {
+      make_GUI(totality, glob_ord)
+    }
+    
+    window.onload = () => {
+      document.getElementById("steps-range").value = 2
+      forward_cycle()
+    }
+    
+  </script>
+</html>
